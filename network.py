@@ -79,7 +79,27 @@ class Network:
 
 
     def update_mini_batch(self, batch, eta):
-        pass
+        """One gradient descent step on a mini-batch of (x, y) pairs.
+
+        Sums the backprop gradients of all pairs into nabla_b / nabla_w
+        (array + array per layer, never list + list), then moves every
+        weight and bias against the average: w -> w - eta/len(batch) * nabla.
+        New lists are assigned to self.weights / self.biases.
+        """
+        nabla_b = [np.zeros(b.shape) for b in self.biases]
+        nabla_w = [np.zeros(w.shape) for w in self.weights]
+
+        factor = eta / len(batch)
+
+        for x, y in batch:
+            delta_b, delta_w = self.backprop(x, y)
+
+            nabla_w = [acc+d for acc, d in zip(nabla_w, delta_w)]
+            nabla_b = [acc+d for acc, d in zip(nabla_b, delta_b)]
+
+        self.weights = [w - factor * nw for w, nw in zip(self.weights, nabla_w)]
+        self.biases = [b - factor * nb for b, nb in zip(self.biases, nabla_b)]
+
 
 
     # COPIED from Nielsen, "Neural Networks and Deep Learning", ch. 1
