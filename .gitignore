@@ -1,2 +1,11 @@
+# Python
 __pycache__/
+*.py[cod]
+
+# Virtual environment (Python 3.13 venv adds its own .gitignore, other tools may not)
+.venv/
+
+# Editor (vim swap and backup files)
 *.swp
+*.swo
+*~
