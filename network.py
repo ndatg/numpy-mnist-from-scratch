@@ -1,5 +1,6 @@
 """A feedforward network of sigmoid neurons, written from scratch with numpy."""
 import numpy as np
+import random
 
 class Network:
     """Fully connected network: weights and biases for every non-input layer."""
@@ -11,6 +12,7 @@ class Network:
         biases[i] has shape (n_out, 1). The input layer has no biases.
         """
         self.sizes = sizes
+        self.num_layers = len(sizes)
         self.weights = []
         self.biases = []
 
@@ -45,6 +47,86 @@ class Network:
 
         return counter
 
+    def cost_derivative(self, output_activations, y):
+        """Return dC/da = a - y: the signed error of every output neuron.
+
+        For the quadratic cost C = 1/2 * ||a - y||^2 (the 1/2 cancels here).
+        Both arguments are (10, 1) columns; y is one-hot. Used by backprop.
+        """
+        return (output_activations-y)
+
+
+    def SGD(self, training_data, epochs, mini_batch_size, eta, test_data=None):
+        """Train with mini-batch stochastic gradient descent.
+
+        training_data: list of (x, y) pairs, y one-hot (10, 1). A shallow copy
+        is shuffled each epoch, so the caller's list keeps its order.
+        Each epoch: shuffle, cut into mini-batches, one update_mini_batch per
+        batch (eta = learning rate). If test_data is given, print evaluate()
+        after every epoch (slower, but shows whether the net is learning).
+        """
+        training_data = list(training_data)
+        training_data_len = len(training_data)
+
+        for epoch in range(epochs):
+            random.shuffle(training_data)
+            for i in range(0, training_data_len, mini_batch_size):
+                self.update_mini_batch(training_data[i:i + mini_batch_size], eta)
+            if test_data is not None:
+                print(f"Epoch {epoch}: {self.evaluate(test_data)} / {len(test_data)}")
+            else:
+                print(f"Epoch {epoch} finished")
+
+
+    def update_mini_batch(self, batch, eta):
+        pass
+
+
+    # COPIED from Nielsen, "Neural Networks and Deep Learning", ch. 1
+    # (github.com/mnielsen/neural-networks-and-deep-learning, src/network.py).
+    # Black box for now: to be deleted and rewritten from scratch after ch. 2.
+    def backprop(self, x, y):
+        """Return a tuple ``(nabla_b, nabla_w)`` representing the
+        gradient for the cost function C_x.  ``nabla_b`` and
+        ``nabla_w`` are layer-by-layer lists of numpy arrays, similar
+        to ``self.biases`` and ``self.weights``."""
+        nabla_b = [np.zeros(b.shape) for b in self.biases]
+        nabla_w = [np.zeros(w.shape) for w in self.weights]
+        # feedforward
+        activation = x
+        activations = [x] # list to store all the activations, layer by layer
+        zs = [] # list to store all the z vectors, layer by layer
+        for b, w in zip(self.biases, self.weights):
+            z = np.dot(w, activation)+b
+            zs.append(z)
+            activation = sigmoid(z)
+            activations.append(activation)
+        # backward pass
+        delta = self.cost_derivative(activations[-1], y) * \
+            sigmoid_prime(zs[-1])
+        nabla_b[-1] = delta
+        nabla_w[-1] = np.dot(delta, activations[-2].transpose())
+        # Note that the variable l in the loop below is used a little
+        # differently to the notation in Chapter 2 of the book.  Here,
+        # l = 1 means the last layer of neurons, l = 2 is the
+        # second-last layer, and so on.  It's a renumbering of the
+        # scheme in the book, used here to take advantage of the fact
+        # that Python can use negative indices in lists.
+        for l in range(2, self.num_layers):
+            z = zs[-l]
+            sp = sigmoid_prime(z)
+            delta = np.dot(self.weights[-l+1].transpose(), delta) * sp
+            nabla_b[-l] = delta
+            nabla_w[-l] = np.dot(delta, activations[-l-1].transpose())
+        return (nabla_b, nabla_w)
+
+
 def sigmoid(z):
     """Elementwise 1 / (1 + e^-z); works on numbers and numpy arrays."""
     return 1/(1 + np.exp(-z))
+
+# COPIED from Nielsen, ch. 1 (src/network.py), together with backprop.
+def sigmoid_prime(z):
+    """Derivative of the sigmoid function."""
+    return sigmoid(z)*(1 - sigmoid(z))
+
