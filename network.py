@@ -102,42 +102,36 @@ class Network:
         self.biases = [b - factor * nb for b, nb in zip(self.biases, nabla_b)]
 
 
-    # COPIED from Nielsen, "Neural Networks and Deep Learning", ch. 1
-    # (github.com/mnielsen/neural-networks-and-deep-learning, src/network.py).
-    # Black box for now: to be deleted and rewritten from scratch after ch. 2.
     def backprop(self, x, y):
-        """Return a tuple ``(nabla_b, nabla_w)`` representing the
-        gradient for the cost function C_x.  ``nabla_b`` and
-        ``nabla_w`` are layer-by-layer lists of numpy arrays, similar
-        to ``self.biases`` and ``self.weights``."""
+        """Return (nabla_b, nabla_w): the gradient of C_x for one pair (x, y).
+
+        x is a (sizes[0], 1) input column, y a one-hot (sizes[-1], 1) column;
+        update_mini_batch calls this once per pair. The forward pass stores
+        every z and activation; the backward pass goes from the last layer to
+        the first with BP1-BP4 (Nielsen, ch. 2). Both lists have the same
+        shapes as self.biases / self.weights. Weights are not changed here.
+        """
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
-        # feedforward
-        activation = x
-        activations = [x] # list to store all the activations, layer by layer
-        zs = [] # list to store all the z vectors, layer by layer
-        for b, w in zip(self.biases, self.weights):
-            z = np.dot(w, activation)+b
+
+        activations, zs = [x], []
+
+        # forward pass
+        for w, b in zip(self.weights, self.biases):
+            z = np.dot(w, activations[-1]) + b
+            activations.append(sigmoid(z))
             zs.append(z)
-            activation = sigmoid(z)
-            activations.append(activation)
+
         # backward pass
-        delta = self.cost_derivative(activations[-1], y) * \
-            sigmoid_prime(zs[-1])
-        nabla_b[-1] = delta
-        nabla_w[-1] = np.dot(delta, activations[-2].transpose())
-        # Note that the variable l in the loop below is used a little
-        # differently to the notation in Chapter 2 of the book.  Here,
-        # l = 1 means the last layer of neurons, l = 2 is the
-        # second-last layer, and so on.  It's a renumbering of the
-        # scheme in the book, used here to take advantage of the fact
-        # that Python can use negative indices in lists.
+        delta = self.cost_derivative(activations[-1], y) * sigmoid_derivative(zs[-1]) # BP1
+        nabla_b[-1] = delta * 1 # BP3
+        nabla_w[-1] = np.dot(delta, activations[-2].T) # BP4
+
         for l in range(2, self.num_layers):
-            z = zs[-l]
-            sp = sigmoid_prime(z)
-            delta = np.dot(self.weights[-l+1].transpose(), delta) * sp
-            nabla_b[-l] = delta
-            nabla_w[-l] = np.dot(delta, activations[-l-1].transpose())
+            delta = np.dot(self.weights[-l+1].T, delta) * sigmoid_derivative(zs[-l]) # BP2
+            nabla_b[-l] = delta * 1 # BP3
+            nabla_w[-l] = np.dot(delta, activations[-l-1].T) # BP4
+
         return (nabla_b, nabla_w)
 
 
@@ -145,8 +139,7 @@ def sigmoid(z):
     """Elementwise 1 / (1 + e^-z); works on numbers and numpy arrays."""
     return 1/(1 + np.exp(-z))
 
-# COPIED from Nielsen, ch. 1 (src/network.py), together with backprop.
-def sigmoid_prime(z):
-    """Derivative of the sigmoid function."""
+def sigmoid_derivative(z):
+    """Elementwise sigma'(z) = sigma(z) * (1 - sigma(z)); used by backprop."""
     return sigmoid(z)*(1 - sigmoid(z))
 
