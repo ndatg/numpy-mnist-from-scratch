@@ -47,6 +47,7 @@ class Network:
 
         return counter
 
+
     def cost_derivative(self, output_activations, y):
         """Return dC/da = a - y: the signed error of every output neuron.
 
@@ -94,12 +95,11 @@ class Network:
         for x, y in batch:
             delta_b, delta_w = self.backprop(x, y)
 
-            nabla_w = [acc+d for acc, d in zip(nabla_w, delta_w)]
             nabla_b = [acc+d for acc, d in zip(nabla_b, delta_b)]
+            nabla_w = [acc+d for acc, d in zip(nabla_w, delta_w)]
 
         self.weights = [w - factor * nw for w, nw in zip(self.weights, nabla_w)]
         self.biases = [b - factor * nb for b, nb in zip(self.biases, nabla_b)]
-
 
 
     # COPIED from Nielsen, "Neural Networks and Deep Learning", ch. 1
